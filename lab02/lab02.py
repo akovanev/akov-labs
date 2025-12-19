@@ -9,15 +9,14 @@ def grad_descent(x0, y0, eta, tolerance, max_steps):
     x = torch.tensor(x0, requires_grad=True)
     y = torch.tensor(y0, requires_grad=True)
     step = 0
+    optimizer = torch.optim.SGD([x, y], lr=eta)
     cost = f(x, y)
     trajectory = [(x.item(), y.item(), cost.item())]
+    
     while cost > tolerance and step < max_steps:
         cost.backward()
-        with torch.no_grad():
-            x -= eta * x.grad
-            y -= eta * y.grad
-            x.grad.zero_()  # Clear gradients
-            y.grad.zero_()
+        optimizer.step()
+        optimizer.zero_grad()
         cost = f(x, y)
         trajectory.append((x.item(), y.item(), cost.item()))
         step += 1
