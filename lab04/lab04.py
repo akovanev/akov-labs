@@ -24,7 +24,7 @@ model = nn.Linear(2, 1)
 optimizer = torch.optim.SGD(model.parameters(), lr=0.01)  # Start small
 criterion = nn.MSELoss()
 
-for epoch in range(10000):  # More epochs
+for epoch in range(10001):  # More epochs
     for batch_x, batch_y in loader:
         optimizer.zero_grad()
         pred = model(batch_x)
