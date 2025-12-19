@@ -13,8 +13,6 @@ def fit_multiple_regression(X, y):
     y: Dependent variable (n_samples, 1)
     """
     # 1. Prepare the design matrix with intercept
-    n_samples = X.shape[0]
-    ones = np.ones((n_samples, 1))
     X_design = x_design(X)
     
     # 2. Calculate the Normal Equation: (X^T * X)^-1 * X^T * y
