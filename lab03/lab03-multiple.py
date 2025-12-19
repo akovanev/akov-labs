@@ -28,7 +28,7 @@ def fit_multiple_regression(X, y):
     return beta_hat
 
 # --- Example Usage ---
-# Generate synthetic data (20 values)
+# Generate synthetic data (24 values)
 np.random.seed(42)
 sqft = np.random.randint(1200, 3500, 24)
 bedrooms = np.random.randint(2, 6, 24)
