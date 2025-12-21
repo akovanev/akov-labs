@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
 def plot_loss(epochs, loss_history):
-    plt.plot(range(epochs + 1), loss_history)
+    plt.plot(range(len(loss_history)), loss_history) 
     plt.xlabel("Epochs")
     plt.ylabel("Cross-Entropy Loss")
     plt.title("Training Loss over Epochs")
