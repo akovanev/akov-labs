@@ -22,6 +22,7 @@ class MLP(nn.Module):
         x = self.sigmoid(self.fc2(x))
         return x
 
+# Initialize model
 model = MLP()
 criterion = nn.BCELoss()
 optimizer = optim.SGD(model.parameters(), lr=0.1)
@@ -51,4 +52,3 @@ with torch.no_grad():
 
     accuracy = ((predictions > 0.5).float() == y_tensor).float().mean()
     print(f"Accuracy: {accuracy.item()*100:.2f}%")
-
