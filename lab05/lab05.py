@@ -23,6 +23,7 @@ X = np.array([
 ])
 y = np.array([0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1])
 
+# Model
 class SigmoidPerceptron:
     def __init__(self, lr):
         self.w = None

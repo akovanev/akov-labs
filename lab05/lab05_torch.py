@@ -29,6 +29,7 @@ y_tensor = torch.tensor(y, dtype=torch.float32)
 dataset = torch.utils.data.TensorDataset(X_tensor, y_tensor)
 loader = torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=True)
 
+# Model
 class SigmoidPerceptron(nn.Module):
     def __init__(self, input_features):
         super(SigmoidPerceptron, self).__init__()
