@@ -24,7 +24,7 @@ class MLP(nn.Module):
 
 model = MLP()
 criterion = nn.BCELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.1)
+optimizer = optim.SGD(model.parameters(), lr=0.1)
 
 # Training
 for epoch in range(10000):
