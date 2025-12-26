@@ -16,6 +16,13 @@ vocab = {
     "cliff":  torch.tensor([0.0, 0.0, 1.0]), # Elevation (Z)
 }
 
+# Training Data: (Context Pair, Target vector for "rock")
+training_data = [
+    (["rock", "quartz"], torch.tensor([1.0, 0.0, 0.2])), 
+    (["rock", "jazz"],  torch.tensor([0.1, 1.0, 0.1])),
+    (["rock", "cliff"],  torch.tensor([0.5, 0.0, 1.0])),
+]
+
 # 3. INITIALIZE "MAGIC" MATRICES (Linear Layers)
 # These start as random coefficients but will be "tuned" during training
 # d_in: Input size (3 dimensions: Geology, Music, Elevation)
@@ -31,12 +38,7 @@ W_V = nn.Linear(d_in, d_v, bias=False)
 optimizer = optim.Adam(list(W_Q.parameters()) + list(W_K.parameters()) + list(W_V.parameters()), lr=0.01)
 criterion = nn.MSELoss()
 
-# Training Data: (Context Pair, Target vector for "rock")
-training_data = [
-    (["rock", "quartz"], torch.tensor([1.0, 0.0, 0.2])), 
-    (["rock", "jazz"],  torch.tensor([0.1, 1.0, 0.1])),
-    (["rock", "cliff"],  torch.tensor([0.5, 0.0, 1.0])),
-]
+
 
 # 5. THE TRAINING LOOP (Learning the coefficients)
 print("Training the Attention Lenses...")
