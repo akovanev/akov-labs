@@ -38,8 +38,6 @@ W_V = nn.Linear(d_in, d_v, bias=False)
 optimizer = optim.Adam(list(W_Q.parameters()) + list(W_K.parameters()) + list(W_V.parameters()), lr=0.01)
 criterion = nn.MSELoss()
 
-
-
 # 5. THE TRAINING LOOP (Learning the coefficients)
 print("Training the Attention Lenses...")
 for epoch in range(301):
