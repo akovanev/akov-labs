@@ -9,7 +9,7 @@ def plot_attention_trajectories(vocab, rock_orig, rock_q, rock_m, rock_c):
     styles = {
         'quartz': {'color': 'red', 'marker': 's'},
         'cliff':  {'color': 'orange', 'marker': '^'},
-        'music':  {'color': 'blue', 'marker': 'o'} # keeping music as blue circle
+        'jazz':  {'color': 'blue', 'marker': 'o'} # keeping music as blue circle
     }
 
     # 2. PLOT ORIGINAL ROCK (The Star)
@@ -17,7 +17,7 @@ def plot_attention_trajectories(vocab, rock_orig, rock_q, rock_m, rock_c):
     ax.text(*rock_orig, '  rock', size=12, fontweight='normal')
 
     # Mapping names to the numerical results
-    results = {'quartz': rock_q, 'music': rock_m, 'cliff': rock_c}
+    results = {'quartz': rock_q, 'jazz': rock_m, 'cliff': rock_c}
 
     for name, style in styles.items():
         anchor = vocab[name].numpy()
@@ -42,7 +42,7 @@ def plot_attention_trajectories(vocab, rock_orig, rock_q, rock_m, rock_c):
                   color=color, arrow_length_ratio=0.0, linewidth=2, linestyle='--')
 
     # 3. FINAL ADJUSTMENTS
-    ax.set_xlabel('Lithology (X)')
+    ax.set_xlabel('Geology (X)')
     ax.set_ylabel('Music (Y)')
     ax.set_zlabel('Elevation (Z)')
     ax.set_title('Attention Trajectories: How Context Shifts "Rock"')

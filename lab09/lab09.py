@@ -11,14 +11,14 @@ torch.manual_seed(42)
 # We define anchor words at the tips of the X, Y, and Z axes
 vocab = {
     "rock":   torch.tensor([1.0, 1.0, 1.0]), # Ambiguous center
-    "quartz": torch.tensor([1.0, 0.0, 0.0]), # Lithology (X)
-    "music":  torch.tensor([0.0, 1.0, 0.0]), # Genre (Y)
+    "quartz": torch.tensor([1.0, 0.0, 0.0]), # Geology (X)
+    "jazz":   torch.tensor([0.0, 1.0, 0.0]), # Music (Y)
     "cliff":  torch.tensor([0.0, 0.0, 1.0]), # Elevation (Z)
 }
 
 # 3. INITIALIZE "MAGIC" MATRICES (Linear Layers)
 # These start as random coefficients but will be "tuned" during training
-# d_in: Input size (3 dimensions: Lithology, Music, Elevation)
+# d_in: Input size (3 dimensions: Geology, Music, Elevation)
 # d_k:  Internal 'projection' size (the space where Query and Key vectors "meet")
 # d_v:  Output size (we keep it same as input for simplicity)
 d_in, d_k, d_v = 3, 2, 3
@@ -34,7 +34,7 @@ criterion = nn.MSELoss()
 # Training Data: (Context Pair, Target vector for "rock")
 training_data = [
     (["rock", "quartz"], torch.tensor([1.0, 0.0, 0.2])), 
-    (["rock", "music"],  torch.tensor([0.1, 1.0, 0.1])),
+    (["rock", "jazz"],  torch.tensor([0.1, 1.0, 0.1])),
     (["rock", "cliff"],  torch.tensor([0.5, 0.0, 1.0])),
 ]
 
@@ -85,7 +85,7 @@ def get_rock_vec(context_word):
 
 rock_orig = vocab["rock"].numpy()
 rock_q = get_rock_vec("quartz")
-rock_m = get_rock_vec("music")
+rock_m = get_rock_vec("jazz")
 rock_c = get_rock_vec("cliff")
 
 print("\n" + "="*40)
@@ -93,8 +93,8 @@ print("RESULTS: 'ROCK' VECTOR AFTER ATTENTION")
 print("="*40)
 print(f"Original Rock:    {['1.000', '1.000', '1.000']}")
 # Replace your print line with this:
-print(f"Rock + Quartz:    {[f'{val:.3f}' for val in rock_q]}  (Lithology focus)")
-print(f"Rock + Music:     {[f'{val:.3f}' for val in rock_m]}   (Genre focus)")
+print(f"Rock + Quartz:    {[f'{val:.3f}' for val in rock_q]}   (Geology focus)")
+print(f"Rock + Jazz:      {[f'{val:.3f}' for val in rock_m]}   (Music focus)")
 print(f"Rock + Cliff:     {[f'{val:.3f}' for val in rock_c]}   (Elevation focus)")
 
 plot_attention_trajectories(vocab, rock_orig, rock_q, rock_m, rock_c)
