@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from plot import plot_attention_trajectories
 
@@ -27,31 +28,56 @@ encoder = nn.Linear(d_in, d_model) # [3 -> 6]
 decoder = nn.Linear(d_model, d_in) # [6 -> 3]
 
 # 3. MULTI-HEAD ATTENTION MODULE
-class SimpleMultiHeadAttention(nn.Module):
-    def __init__(self, d_model, n_heads):
+class Head(nn.Module):
+    """ A single head of self-attention """
+    def __init__(self, d_model, head_size):
         super().__init__()
-        self.n_heads = n_heads
-        self.d_k = d_model // n_heads
-        self.W_Q = nn.Linear(d_model, d_model) # [6 -> 6]
-        self.W_K = nn.Linear(d_model, d_model) # [6 -> 6]
-        self.W_V = nn.Linear(d_model, d_model) # [6 -> 6]
-        self.W_O = nn.Linear(d_model, d_model) # [6 -> 6]
+        # Each head has its own smaller projection matrices
+        self.key = nn.Linear(d_model, head_size, bias=False)
+        self.query = nn.Linear(d_model, head_size, bias=False)
+        self.value = nn.Linear(d_model, head_size, bias=False)
+        self.head_size = head_size
 
     def forward(self, x):
-        B, T, _ = x.shape
-        # .view() splits into heads (B, T, n_heads, d_k)
-        # .transpose() brings heads forward (B, n_heads, T, d_k)
-        Q = self.W_Q(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
-        K = self.W_K(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
-        V = self.W_V(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
-        scores = (Q @ K.transpose(-2, -1)) / (self.d_k ** 0.5)
-        weights = torch.softmax(scores, dim=-1)
-        # contiguous().view() to merge heads back
-        attn = (weights @ V).transpose(1, 2).contiguous().view(B, T, -1)
-        return self.W_O(attn), weights
+        B, T, C = x.shape
+        K = self.key(x)   # (B, T, head_size)
+        Q = self.query(x) # (B, T, head_size)
+        V = self.value(x) # (B, T, head_size)
+
+        # Compute attention scores
+        # (B, T, head_size) @ (B, head_size, T) -> (B, T, T)
+        scores = Q @ K.transpose(-2, -1) * (self.head_size ** -0.5)
+        weights = F.softmax(scores, dim=-1)
+        
+        # Perform the weighted aggregation of the values
+        out = weights @ V # (B, T, head_size)
+        return out, weights
+
+class MultiHeadAttention(nn.Module):
+    """ Multiple heads of self-attention in parallel """
+    def __init__(self, d_model, n_heads):
+        super().__init__()
+        head_size = d_model // n_heads
+        # Create a list of independent Head modules
+        self.heads = nn.ModuleList([Head(d_model, head_size) for _ in range(n_heads)])
+        # Final projection to bring it back to d_model size
+        self.proj = nn.Linear(d_model, d_model)
+
+    def forward(self, x):
+        # Run each head and concatenate the results along the feature dimension
+        # Each head returns (out, weights)
+        head_outputs = [h(x) for h in self.heads]
+        
+        # Concatenate the 'out' parts: (B, T, head_size * n_heads)
+        out = torch.cat([res[0] for res in head_outputs], dim=-1)
+        
+        # Collect weights for visualization/analysis if needed
+        weights = torch.stack([res[1] for res in head_outputs], dim=1)
+        
+        return self.proj(out), weights
 
 # 4. TRAINING SETUP
-attn = SimpleMultiHeadAttention(d_model, n_heads)
+attn = MultiHeadAttention(d_model, n_heads)
 # Combine all model parameters for optimization
 params = list(encoder.parameters()) + list(attn.parameters()) + list(decoder.parameters())
 optimizer = optim.Adam(params, lr=0.01)
