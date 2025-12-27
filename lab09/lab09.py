@@ -53,14 +53,14 @@ for epoch in range(301):
         
         # Step 2: Attention Calculation (The Dot Product)
         # We divide by sqrt(d_k) to keep scores stable
-        scores = torch.matmul(Q, K.transpose(-2, -1)) / (d_k ** 0.5)
+        scores = (Q @ K.transpose(-2, -1)) / (d_k ** 0.5)
         
         # Step 3: Softmax (Turning scores into weights that sum to 1)
         weights = torch.softmax(scores, dim=-1)
         
         # Step 4: Aggregation (Weighted sum of values)
         # We only care about the first output: the updated "rock"
-        rock_output = torch.matmul(weights, V)[0]
+        rock_output = (weights @ V)[0]
         
         # Step 5: Backpropagation
         loss = criterion(rock_output, target_meaning)
@@ -92,7 +92,6 @@ print("\n" + "="*40)
 print("RESULTS: 'ROCK' VECTOR AFTER ATTENTION")
 print("="*40)
 print(f"Original Rock:    {['1.000', '1.000', '1.000']}")
-# Replace your print line with this:
 print(f"Rock + Quartz:    {[f'{val:.3f}' for val in rock_q]}   (Geology focus)")
 print(f"Rock + Jazz:      {[f'{val:.3f}' for val in rock_m]}   (Music focus)")
 print(f"Rock + Cliff:     {[f'{val:.3f}' for val in rock_c]}   (Elevation focus)")
