@@ -10,7 +10,7 @@ from gpt_prep import run_gpt_prep
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 BLOCK_SIZE = 128   # Context window
 BATCH_SIZE = 32    # Sequences per batch
-MAX_ITERS = 50  # Total batches to train before finishing
+MAX_ITERS = 1000   # Total batches to train before finishing
 EVAL_INTERVAL = 10
 LEARNING_RATE = 3e-4
 N_EMBD = 384 # The same as d_model in previous labs
