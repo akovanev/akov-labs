@@ -31,7 +31,7 @@ def main():
     print(f"Vocab loaded. Size: {len(word_to_id)}")
 
     # 2. Load Model
-    model = lab.GPTLanguageModel(len(word_to_id), lab.N_EMBD, lab.N_HEAD, lab.N_LAYER, lab.BLOCK_SIZE).to(lab.device)
+    model = lab.NanoStoryGPTModel(len(word_to_id), lab.N_EMBD, lab.N_HEAD, lab.N_LAYER, lab.BLOCK_SIZE, lab.DROPOUT).to(lab.device)
     if not os.path.exists(lab.model_path):
         print(f"FAILED: {lab.model_path} not found! Did you run train.py?")
         return

@@ -10,7 +10,7 @@ from gpt_prep import run_gpt_prep
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 BLOCK_SIZE = 128   # Context window
 BATCH_SIZE = 32    # Sequences per batch
-MAX_ITERS = 8000  # Total batches to train before finishing
+MAX_ITERS = 50  # Total batches to train before finishing
 EVAL_INTERVAL = 10
 LEARNING_RATE = 3e-4
 N_EMBD = 384 # The same as d_model in previous labs
@@ -28,13 +28,13 @@ model_path = os.path.join(data_dir, 'gpt_lab_model.pt')
 # 2. OPTIMIZED MODEL ARCHITECTURE
 class Head(nn.Module):
     """ One head of self-attention """
-    def __init__(self, n_embd, head_size):
+    def __init__(self, n_embd, head_size, block_size, dropout):
         super().__init__()
         self.key = nn.Linear(n_embd, head_size, bias=False)
         self.query = nn.Linear(n_embd, head_size, bias=False)
         self.value = nn.Linear(n_embd, head_size, bias=False)
-        self.register_buffer('tril', torch.tril(torch.ones(BLOCK_SIZE, BLOCK_SIZE)))
-        self.dropout = nn.Dropout(DROPOUT)
+        self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         B, T, C = x.shape
@@ -57,10 +57,10 @@ class Head(nn.Module):
     
 class MultiHeadAttention(nn.Module):
     """ Multiple heads of self-attention in parallel """
-    def __init__(self, n_embd, num_heads, dropout=DROPOUT):
+    def __init__(self, n_embd, num_heads, block_size, dropout):
         super().__init__()
         head_size = n_embd // num_heads
-        self.heads = nn.ModuleList([Head(n_embd, head_size) for _ in range(num_heads)])
+        self.heads = nn.ModuleList([Head(n_embd, head_size, block_size, dropout) for _ in range(num_heads)])
         self.proj = nn.Linear(n_embd, n_embd)
         self.dropout = nn.Dropout(dropout)
 
@@ -72,7 +72,7 @@ class MultiHeadAttention(nn.Module):
 # 3. FEEDFORWARD NETWORK
 class FeedForward(nn.Module):
     """Position-wise feed-forward network"""
-    def __init__(self, n_embd, d_ff=4*N_EMBD, dropout=DROPOUT):
+    def __init__(self, n_embd, d_ff, dropout):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(n_embd, d_ff),
@@ -87,10 +87,10 @@ class FeedForward(nn.Module):
 # 4. TRANSFORMER BLOCK
 class Block(nn.Module):
     """ Transformer block: communication followed by computation """
-    def __init__(self, n_embd, n_head, dropout=DROPOUT):
+    def __init__(self, n_embd, n_head, block_size, dropout):
         super().__init__()
-        self.sa = MultiHeadAttention(n_embd, n_head, dropout)
-        self.ffwd = FeedForward(n_embd, dropout=dropout)
+        self.sa = MultiHeadAttention(n_embd, n_head, block_size, dropout)
+        self.ffwd = FeedForward(n_embd, 4*n_embd, dropout)
         self.ln1 = nn.LayerNorm(n_embd)
         self.ln2 = nn.LayerNorm(n_embd)
 
@@ -99,13 +99,14 @@ class Block(nn.Module):
         x = x + self.ffwd(self.ln2(x)) # Residual connection around feed-forward
         return x
     
-# 5. THE COMPLETE GPT MODEL
-class GPTLanguageModel(nn.Module):
-    def __init__(self, vocab_size, n_embd, n_head, n_layer, block_size):
+# 5. THE COMPLETE GPT MODEL 
+class NanoStoryGPTModel(nn.Module):
+    def __init__(self, vocab_size, n_embd, n_head, n_layer, block_size, dropout):
         super().__init__()
         self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
         self.position_embedding_table = nn.Embedding(block_size, n_embd)
-        self.blocks = nn.Sequential(*[Block(n_embd, n_head) for _ in range(n_layer)])
+        self.blocks = nn.Sequential(*[Block(n_embd, n_head, block_size=block_size, dropout=dropout) for _ in range(n_layer)])
+        self.block_size = block_size
         self.ln_f = nn.LayerNorm(n_embd) # Final layer norm
         self.lm_head = nn.Linear(n_embd, vocab_size)
 
@@ -134,7 +135,7 @@ class GPTLanguageModel(nn.Module):
     def generate(self, idx, max_new_tokens):
         """ Generate new tokens from the model given a context """
         for _ in range(max_new_tokens):
-            idx_cond = idx[:, -BLOCK_SIZE:] # Crop context to block size
+            idx_cond = idx[:, -self.block_size:] # Crop context to block size
             logits, _ = self(idx_cond)
             logits = logits[:, -1, :] # Focus on last time step
             probs = F.softmax(logits, dim=-1) # Convert to probabilities
@@ -142,9 +143,9 @@ class GPTLanguageModel(nn.Module):
             idx = torch.cat((idx, next_id), dim=1) # Append sampled token
         return idx
     
-# 6. DATA PREPARATION
+# 6. GPTDataset
 class GPTDataset(Dataset):
-    def __init__(self, bin_path, dtype, block_size=BLOCK_SIZE):
+    def __init__(self, bin_path, dtype, block_size):
         self.data = np.memmap(bin_path, dtype=dtype, mode='r')
         self.block_size = block_size
     def __len__(self):
@@ -169,7 +170,7 @@ def main():
     train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=4, pin_memory=True)
 
     # 7.3. Init Model & Optimizer
-    model = GPTLanguageModel(vocab_size, N_EMBD, N_HEAD, N_LAYER, BLOCK_SIZE).to(device)
+    model = NanoStoryGPTModel(vocab_size, N_EMBD, N_HEAD, N_LAYER, BLOCK_SIZE, DROPOUT).to(device)
     
     # 7.4 Load existing model if available to continue training
     if os.path.exists(model_path):
