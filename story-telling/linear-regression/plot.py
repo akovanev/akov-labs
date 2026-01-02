@@ -12,11 +12,6 @@ def plot_simple(x, y, y_pred, slope, intercept):
         plt.scatter(x, y_pred, color='lightskyblue', s=60, alpha=0.75, 
                 edgecolors='deepskyblue', linewidth=1, zorder=3, label='Predictions')
 
-        # Blue confidence band
-        y_err = [1.5] * len(x)
-        plt.fill_between(x, [p-1.5 for p in y_pred], [p+1.5 for p in y_pred], 
-                        color='lightblue', alpha=0.4, label='Confidence Interval')
-
         plt.xlabel('X Values', fontsize=13, fontweight='bold')
         plt.ylabel('Y Values', fontsize=13, fontweight='bold')
         plt.title('Linear Regression: Actual vs Predicted', 
@@ -57,7 +52,7 @@ def plot_multiple(sqft, bedrooms, y_data, y_pred, beta):
     plane_proxy = mpatches.Patch(color='cyan', alpha=0.3, label='Regression Plane')
 
     # Labels
-    ax.set_xlabel('SqFt')
+    ax.set_xlabel('Sqft')
     ax.set_ylabel('Bedrooms')
     ax.set_zlabel('Price ($k)')
     ax.set_title('Multiple Linear Regression')

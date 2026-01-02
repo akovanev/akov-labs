@@ -1,7 +1,7 @@
 import numpy as np
 from plot import plot_multiple
 
-def x_design(X):
+def prepend_ones_column(X):
     """ Add a column of ones to X to account for the intercept term. """
     n_samples = X.shape[0]
     ones = np.ones((n_samples, 1))
@@ -12,16 +12,16 @@ def fit_multiple_regression(X, y):
     X: Independent variables (n_samples, n_features)
     y: Dependent variable (n_samples, 1)
     """
-    # 1. Prepare the design matrix with intercept
-    X_design = x_design(X)
+    # 1. Prepare the matrix with intercept
+    X = prepend_ones_column(X)
     
     # 2. Calculate the Normal Equation: (X^T * X)^-1 * X^T * y
     # X.T is the transpose
     # np.linalg.inv calculates the matrix inverse
     # @ is the matrix multiplication operator in Python
-    xtx = X_design.T @ X_design
+    xtx = X.T @ X
     xtx_inv = np.linalg.inv(xtx)
-    xt_y = X_design.T @ y
+    xt_y = X.T @ y
     
     beta_hat = xtx_inv @ xt_y
     
@@ -33,7 +33,7 @@ np.random.seed(42)
 sqft = np.random.randint(1200, 3500, 24)
 bedrooms = np.random.randint(2, 6, 24)
 
-# True relationship: Price = 50 + 0.12*SqFt + 25*Bedrooms + Noise
+# True relationship: Price = 50 + 0.12*Sqft + 25*Bedrooms + Noise
 noise = np.random.normal(0, 20, 24)
 prices = 50 + (0.12 * sqft) + (25 * bedrooms) + noise
 
@@ -50,7 +50,7 @@ print(f"Slope for Bedrooms (Beta_2): {beta_hat[2]:.4f}")
 # Make predictions
 sqft_col = X_data[:, 0]
 bedrooms_col = X_data[:, 1]
-X_design = x_design(X_data)
-y_pred = X_design @ beta_hat
+X = prepend_ones_column(X_data)
+y_pred = X @ beta_hat
 
 plot_multiple(sqft_col, bedrooms_col, y_data, y_pred, beta_hat)
