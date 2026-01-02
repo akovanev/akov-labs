@@ -5,11 +5,11 @@ import torch
 def f(x, y):
     return 2*x**2 + 3*y**2
 
-def grad_descent(x0, y0, eta, tolerance, max_steps):
+def grad_descent(x0, y0, alpha, tolerance, max_steps):
     x = torch.tensor(x0, requires_grad=True)
     y = torch.tensor(y0, requires_grad=True)
     step = 0
-    optimizer = torch.optim.SGD([x, y], lr=eta)
+    optimizer = torch.optim.SGD([x, y], lr=alpha)
     cost = f(x, y)
     trajectory = [(x.item(), y.item(), cost.item())]
     
@@ -24,5 +24,5 @@ def grad_descent(x0, y0, eta, tolerance, max_steps):
             print(f"Step {step}: ({x:.3f}, {y:.3f}), cost={cost:.3f}")
     return trajectory
 
-trajectory = grad_descent(2.0, -3.0, eta=0.05, tolerance=1e-3, max_steps=100)
+trajectory = grad_descent(2.0, -3.0, alpha=0.05, tolerance=1e-3, max_steps=100)
 plot(trajectory)

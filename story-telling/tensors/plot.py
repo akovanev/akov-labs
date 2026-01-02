@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 
 def plot(trajectory):
     # Create contour plot
@@ -26,17 +25,18 @@ def plot(trajectory):
     ax.scatter(traj_x, traj_y, traj_z, c='red', s=30, alpha=0.6)
 
     # Highlight start and end
-    ax.scatter(traj_x[0], traj_y[0], traj_z[0], color='green', s=150, label='Start (2,-3,35)')
+    ax.scatter(traj_x[0], traj_y[0], traj_z[0], color='green', s=150, label='Start (2,-3)')
     ax.scatter(traj_x[-1], traj_y[-1], traj_z[-1], color='gold', s=200, marker='*', label=f'End ({traj_x[-1]:.2f},{traj_y[-1]:.2f})')
 
     # Gradient at start (for reference)
     scale = 0.3
-    ax.quiver(2, -3, 35, 8*scale, -18*scale, 0, color='brown', arrow_length_ratio=0.1, 
-            label='Initial ∇=(8,-18)', linewidth=2)
+    ax.quiver(2, -3, 35, 8*scale, -18*scale, 0, color='brown', arrow_length_ratio=0.1, label='Initial ∇=(8,-18)', linewidth=2)
 
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    plt.title('Gradient Descent Trajectory: z=2x²+3y²\nη=0.05, starts at (2,-3,35)')
-    ax.legend()
+    ax.set_xlabel('X', fontsize=18)
+    ax.set_ylabel('Y', fontsize=18)
+    ax.set_zlabel('Z', fontsize=18)
+    plt.title('Gradient Descent Trajectory: z=2x²+3y²\nα=0.05, starts at (2,-3)', fontsize=20)
+    ax.legend(fontsize=18)
+    plt.tight_layout(pad=0.5)  # Auto-adjusts subplots/margins
+    fig.subplots_adjust(left=0.05, right=0.95, top=0.92, bottom=0.08)  # Fine-tune edges
     plt.show()
