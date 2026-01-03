@@ -10,7 +10,7 @@ data_dir = os.path.join(os.path.dirname(__file__), 'data')
 train_path = os.path.join(data_dir, 'mnist_train.csv')
 test_path = os.path.join(data_dir, 'mnist_test.csv')
 
-# 1. Load YOUR CSV files (already split!)
+# 1. Load CSV files
 train_data = pd.read_csv(train_path)
 test_data = pd.read_csv(test_path)
 
@@ -33,7 +33,7 @@ test_dataset = TensorDataset(
 train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=128)
 
-# 3. Softmax model (unchanged)
+# 3. Softmax model
 class SoftmaxRegression(nn.Module):
     def __init__(self):
         super().__init__()
