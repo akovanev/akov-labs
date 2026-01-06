@@ -1,9 +1,9 @@
-import lab15 as lab
+import main as lab
 import os
 import re
 import torch
 
-PROMPT = "Once upon a time in a land far, far away, there lived a"
+PROMPT = "the cat looked towards"
 TOKENS_TO_GENERATE = 100
 
 def clean_punctuation(text):
