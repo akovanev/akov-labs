@@ -2,16 +2,18 @@ import torch
 import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
 import numpy as np
+from test import interpret_results
 
 # Data Generation
 np.random.seed(42)
-sqft = np.random.randint(1200, 3500, 24)
-bedrooms = np.random.randint(2, 6, 24)
-noise = np.random.normal(0, 20, 24)
-prices = 50 + (0.12 * sqft) + (25 * bedrooms) + noise
+square_meters = np.random.randint(100, 300, 200)
+bedrooms = np.random.randint(2, 6, 200)
+noise_std = 5
+noise = np.random.normal(0, noise_std, 200)
+prices = 10 + (0.85 * square_meters) + (15 * bedrooms) + noise
 
 # Data
-X_data = np.column_stack((sqft, bedrooms))
+X_data = np.column_stack((square_meters, bedrooms))
 y_data = prices
 X_norm = (X_data - X_data.mean(0)) / X_data.std(0)  # # Normalize features (CRITICAL for stable SGD)
 X_tensor = torch.from_numpy(X_norm.astype(np.float32))
@@ -26,26 +28,17 @@ criterion = nn.MSELoss()
 
 #Training
 for epoch in range(10001):
+    running_loss = 0.0
     for batch_x, batch_y in loader:
         optimizer.zero_grad()
         pred = model(batch_x)
         loss = criterion(pred, batch_y)
         loss.backward()
         optimizer.step()
+        running_loss += loss.item()
     if epoch % 400 == 0:
-        print(f"Epoch {epoch}, Loss: {loss.item():.4f}")
+        avg_loss = running_loss / len(loader)
+        print(f"Epoch {epoch}, Average loss: {avg_loss:.4f}")
 
 # Test
-with torch.no_grad():
-    w_norm = model.weight.squeeze().numpy() # [w1_norm, w2_norm]
-    b_norm = model.bias.item()             # scalar bias
-
-# 1. Get stats used during normalization
-X_mean = X_data.mean(axis=0)
-X_std = X_data.std(axis=0)
-# 2. Correct Un-normalization math
-beta = w_norm / X_std
-b = b_norm - np.sum((w_norm * X_mean) / X_std)
-
-print(f"True betas: [0.12, 25], Intercept: 50")
-print(f"Recovered: Beta={beta}, Intercept={b:.4f}")
+interpret_results(model, X_data, X_tensor, prices, noise_std)
