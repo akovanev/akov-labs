@@ -28,16 +28,16 @@ criterion = nn.MSELoss()
 
 #Training
 for epoch in range(10001):
-    running_loss = 0.0
+    epoch_loss = 0.0
     for batch_x, batch_y in loader:
         optimizer.zero_grad()
         pred = model(batch_x)
         loss = criterion(pred, batch_y)
         loss.backward()
         optimizer.step()
-        running_loss += loss.item()
+        epoch_loss += loss.item()
     if epoch % 400 == 0:
-        avg_loss = running_loss / len(loader)
+        avg_loss = epoch_loss / len(loader)
         print(f"Epoch {epoch}, Average loss: {avg_loss:.4f}")
 
 # Test
