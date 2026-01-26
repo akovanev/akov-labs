@@ -33,7 +33,7 @@ np.random.seed(42)
 square_meters = np.random.randint(100, 300, 24)
 bedrooms = np.random.randint(2, 6, 24)
 
-# True relationship: price = 10 + 0.85*square_meters + 15*Bedrooms + Noise
+# True relationship: price = 10 + 0.85*square_meters + 15*bedrooms + noise
 noise = np.random.normal(0, 20, 24)
 prices = 10 + (0.85 * square_meters) + (15 * bedrooms) + noise
 
