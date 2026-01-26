@@ -30,27 +30,27 @@ def fit_multiple_regression(X, y):
 # --- Example Usage ---
 # Generate synthetic data (24 values)
 np.random.seed(42)
-sqft = np.random.randint(1200, 3500, 24)
+square_meters = np.random.randint(100, 300, 24)
 bedrooms = np.random.randint(2, 6, 24)
 
-# True relationship: Price = 50 + 0.12*Sqft + 25*Bedrooms + Noise
+# True relationship: price = 10 + 0.85*square_meters + 15*Bedrooms + Noise
 noise = np.random.normal(0, 20, 24)
-prices = 50 + (0.12 * sqft) + (25 * bedrooms) + noise
+prices = 10 + (0.85 * square_meters) + (15 * bedrooms) + noise
 
-X_data = np.column_stack((sqft, bedrooms))
+X_data = np.column_stack((square_meters, bedrooms))
 y_data = prices
 
 # Get the best estimate coefficients
 beta_hat = fit_multiple_regression(X_data, y_data)
 
 print(f"Intercept (Beta_0): {beta_hat[0]:.4f}")
-print(f"Slope for SqFt (Beta_1): {beta_hat[1]:.4f}")
+print(f"Slope for square_meters (Beta_1): {beta_hat[1]:.4f}")
 print(f"Slope for Bedrooms (Beta_2): {beta_hat[2]:.4f}")
 
 # Make predictions
-sqft_col = X_data[:, 0]
+square_meters_col = X_data[:, 0]
 bedrooms_col = X_data[:, 1]
 X = prepend_ones_column(X_data)
 y_pred = X @ beta_hat
 
-plot_multiple(sqft_col, bedrooms_col, y_data, y_pred, beta_hat)
+plot_multiple(square_meters_col, bedrooms_col, y_data, y_pred, beta_hat)
