@@ -1,10 +1,10 @@
-import matplotlib.pyplot as plt
 import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import pandas as pd
 from torch.utils.data import DataLoader, TensorDataset
+from plot import plot_image
 
 data_dir = os.path.join(os.path.dirname(__file__), 'data')
 train_path = os.path.join(data_dir, 'mnist_train.csv')
@@ -72,18 +72,13 @@ print(f'Test Accuracy: {100 * correct / total:.2f}%')
 
 # 6. Test first image
 
-with torch.no_grad():
-    first_img = torch.FloatTensor(X_test[0:1])  # Shape: (1, 784)
-    pred_probs = model(first_img)               # Softmax output
-    _, predicted = torch.max(pred_probs, 1)     # Predicted class
-    true_label = y_test[0]                      # Ground truth
+# Choose any valid index: 0 <= img_index < len(X_test)
+img_index = 1  # change this to try different images
 
-# Display image + prediction
-img = X_test[0].reshape(28, 28)  # Your reshape (needs no tensor conversion)
-plt.figure(figsize=(6, 6))
-plt.imshow(img, cmap='gray')
-probs_list = [f"{p:.4f}" for p in pred_probs[0].numpy()]
-probs_str = " ".join(probs_list[:10])
-plt.title(f"True: {int(true_label)}\nPredicted: {predicted.item()}\nProbs: {probs_str}")
-plt.axis('off')
-plt.show()
+with torch.no_grad():
+    current_img = torch.FloatTensor(X_test[img_index:img_index+1])  # Shape: (1, 784)
+    pred_probs = model(current_img)                                 # Softmax output
+    _, predicted = torch.max(pred_probs, 1)                         # Predicted class
+    true_label = y_test[img_index]   
+
+plot_image(X_test, img_index, true_label, pred_probs, predicted)
