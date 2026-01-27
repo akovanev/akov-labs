@@ -60,12 +60,12 @@ for epoch in range(21):
 # 5. Test accuracy
 model.eval()
 correct = 0
-total = 0
+total = X_test.shape[0]
+
 with torch.no_grad():
     for batch_x, batch_y in test_loader:
         outputs = model(batch_x)
         _, predicted = torch.max(outputs, 1)
-        total += batch_y.size(0)
         correct += (predicted == batch_y).sum().item()
 
 print(f'Test Accuracy: {100 * correct / total:.2f}%')
