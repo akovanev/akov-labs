@@ -48,14 +48,16 @@ optimizer = optim.SGD(model.parameters(), lr=0.01)
 
 # 4. Training
 for epoch in range(21):
+    epoch_loss = 0.0
     for batch_x, batch_y in train_loader:
         optimizer.zero_grad()
         outputs = model(batch_x)
         loss = criterion(outputs, batch_y)
         loss.backward()
         optimizer.step()
+        epoch_loss += loss.item()
     if epoch % 5 == 0:
-        print(f"Epoch {epoch}, Loss: {loss.item():.4f}")
+        print(f"Epoch {epoch}, Loss: {epoch_loss/len(train_loader):.4f}")
 
 # 5. Test accuracy
 model.eval()
