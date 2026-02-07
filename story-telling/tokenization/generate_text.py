@@ -1,4 +1,4 @@
-import main as lab
+import main as m
 import os
 import torch
 import numpy as np
@@ -16,20 +16,20 @@ def main():
 
     # 2. Load Model
     # Important: vocab_size must match what was used during training
-    model = lab.NanoStoryGPTModel(
+    model = m.NanoStoryGPTModel(
         vocab_size, 
-        lab.N_EMBD, 
-        lab.N_HEAD, 
-        lab.N_LAYER, 
-        lab.BLOCK_SIZE, 
-        lab.DROPOUT
-    ).to(lab.device)
+        m.N_EMBD, 
+        m.N_HEAD, 
+        m.N_LAYER, 
+        m.BLOCK_SIZE, 
+        m.DROPOUT
+    ).to(m.device)
 
-    if not os.path.exists(lab.model_path):
-        print(f"FAILED: {lab.model_path} not found! Did you run training with tiktoken?")
+    if not os.path.exists(m.model_path):
+        print(f"FAILED: {m.model_path} not found! Did you run training with tiktoken?")
         return
         
-    model.load_state_dict(torch.load(lab.model_path, map_location=lab.device))
+    model.load_state_dict(torch.load(m.model_path, map_location=m.device))
     model.eval()
     print("Model weights loaded.")
 
@@ -38,7 +38,7 @@ def main():
     ids = enc.encode(PROMPT)
     print(f"Input IDs the model sees: {ids}")
     
-    x = torch.tensor([ids], dtype=torch.long, device=lab.device)
+    x = torch.tensor([ids], dtype=torch.long, device=m.device)
 
     # 4. Generate
     print(f"Generating {TOKENS_TO_GENERATE} tokens...", flush=True)

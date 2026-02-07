@@ -1,4 +1,4 @@
-import main as lab
+import main as m
 import os
 import re
 import torch
@@ -23,19 +23,19 @@ def clean_punctuation(text):
 
 def main():
      # 1. Load Vocab
-    if not os.path.exists(lab.vocab_path):
-        print(f"FAILED: {lab.vocab_path} not found!")
+    if not os.path.exists(m.vocab_path):
+        print(f"FAILED: {m.vocab_path} not found!")
         return
-    word_to_id = torch.load(lab.vocab_path)
+    word_to_id = torch.load(m.vocab_path)
     id_to_word = {i: w for w, i in word_to_id.items()}
     print(f"Vocab loaded. Size: {len(word_to_id)}")
 
     # 2. Load Model
-    model = lab.NanoStoryGPTModel(len(word_to_id), lab.N_EMBD, lab.N_HEAD, lab.N_LAYER, lab.BLOCK_SIZE, lab.DROPOUT).to(lab.device)
-    if not os.path.exists(lab.model_path):
-        print(f"FAILED: {lab.model_path} not found! Did you run train.py?")
+    model = m.NanoStoryGPTModel(len(word_to_id), m.N_EMBD, m.N_HEAD, m.N_LAYER, m.BLOCK_SIZE, m.DROPOUT).to(m.device)
+    if not os.path.exists(m.model_path):
+        print(f"FAILED: {m.model_path} not found! Did you run train.py?")
         return
-    model.load_state_dict(torch.load(lab.model_path, map_location=lab.device))
+    model.load_state_dict(torch.load(m.model_path, map_location=m.device))
     model.eval()
     print("Model weights loaded.")
 
@@ -45,7 +45,7 @@ def main():
     
     print(f"Input IDs the model sees: {ids}") # DEBUG PRINT
     
-    x = torch.tensor([ids], dtype=torch.long, device=lab.device)
+    x = torch.tensor([ids], dtype=torch.long, device=m.device)
 
     # 4. Generate
     print(f"Generating {TOKENS_TO_GENERATE} tokens...", flush=True)
