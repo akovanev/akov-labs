@@ -10,7 +10,8 @@ from gpt_prep import run_gpt_prep
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 BLOCK_SIZE = 128   # Context window
 BATCH_SIZE = 32    # Sequences per batch
-MAX_ITERS = 1000   # Total batches to train before finishing
+MAX_ITERS = 5000   # Max iterations to train before finishing
+MIN_ITER_TO_SAVE = 1000
 EVAL_INTERVAL = 10
 LEARNING_RATE = 3e-4
 N_EMBD = 384 # The same as d_model in previous labs
@@ -25,58 +26,53 @@ bin_path = os.path.join(data_dir, 'train.bin')
 vocab_path = os.path.join(data_dir, 'vocab.pt')
 model_path = os.path.join(data_dir, 'gpt_lab_model.pt')
 
-# 2. OPTIMIZED MODEL ARCHITECTURE
-class Head(nn.Module):
-    """ One head of self-attention """
-    def __init__(self, n_embd, head_size, block_size, dropout):
+# 2. VECTORIZED ATTENTION (The Efficiency Fix)
+class CausalSelfAttention(nn.Module):
+    """ Vectorized Multi-Head Causal Self-Attention """
+    def __init__(self, n_embd, n_head, block_size, dropout):
         super().__init__()
-        self.key = nn.Linear(n_embd, head_size, bias=False)
-        self.query = nn.Linear(n_embd, head_size, bias=False)
-        self.value = nn.Linear(n_embd, head_size, bias=False)
-        self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
-        self.dropout = nn.Dropout(dropout)
+        assert n_embd % n_head == 0
+        # Key, Query, Value projections for all heads in one linear layer
+        self.c_attn = nn.Linear(n_embd, 3 * n_embd, bias=False)
+        # Output projection
+        self.c_proj = nn.Linear(n_embd, n_embd)
+        # Regularization
+        self.attn_dropout = nn.Dropout(dropout)
+        self.resid_dropout = nn.Dropout(dropout)
+        self.n_head = n_head
+        self.n_embd = n_embd
+        # Causal mask
+        self.register_buffer("bias", torch.tril(torch.ones(block_size, block_size))
+                                     .view(1, 1, block_size, block_size))
 
     def forward(self, x):
-        B, T, C = x.shape
-        K = self.key(x)   # (B, T, head_size)
-        Q = self.query(x) # (B, T, head_size)
-        V = self.value(x) # (B, T, head_size)
+        B, T, C = x.size() 
 
-        # Compute attention scores. K.shape[-1] is head_size
-        scores = Q @ K.transpose(-2, -1) * (K.shape[-1] ** -0.5) # (B, T, T)
+        # Calculate query, key, values for all heads in batch and move head forward to be the batch dim
+        q, k, v  = self.c_attn(x).split(self.n_embd, dim=2)
+        k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+        q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+        v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
 
-        # Apply the causal mask to ensure that attention is only applied to the left in the input sequence
-        mask = self.tril[:T, :T]
-        scores = scores.masked_fill(mask == 0, float('-inf'))
+        # Causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
+        att = (q @ k.transpose(-2, -1)) * (1.0 / np.sqrt(k.size(-1)))
+        att = att.masked_fill(self.bias[:,:,:T,:T] == 0, float('-inf'))
+        att = F.softmax(att, dim=-1)
+        att = self.attn_dropout(att)
+        y = att @ v # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
+        y = y.transpose(1, 2).contiguous().view(B, T, C) # Re-assemble all head outputs side by side
 
-        weights = F.softmax(scores, dim=-1) # (B, T, T)
-        weights = self.dropout(weights)
-        
-        out = weights @ V # (B, T, head_size)
-        return out
-    
-class MultiHeadAttention(nn.Module):
-    """ Multiple heads of self-attention in parallel """
-    def __init__(self, n_embd, num_heads, block_size, dropout):
-        super().__init__()
-        head_size = n_embd // num_heads
-        self.heads = nn.ModuleList([Head(n_embd, head_size, block_size, dropout) for _ in range(num_heads)])
-        self.proj = nn.Linear(n_embd, n_embd)
-        self.dropout = nn.Dropout(dropout)
+        # Output projection
+        y = self.resid_dropout(self.c_proj(y))
+        return y
 
-    def forward(self, x):
-        out = torch.cat([h(x) for h in self.heads], dim=-1) # Concatenate head outputs
-        out = self.dropout(self.proj(out))
-        return out
-    
 # 3. FEEDFORWARD NETWORK
 class FeedForward(nn.Module):
-    """Position-wise feed-forward network"""
     def __init__(self, n_embd, d_ff, dropout):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(n_embd, d_ff),
-            nn.GELU(),
+            nn.GELU(), # GELU is more common in modern GPT architectures
             nn.Linear(d_ff, n_embd),
             nn.Dropout(dropout)
         )
@@ -89,61 +85,74 @@ class Block(nn.Module):
     """ Transformer block: communication followed by computation """
     def __init__(self, n_embd, n_head, block_size, dropout):
         super().__init__()
-        self.sa = MultiHeadAttention(n_embd, n_head, block_size, dropout)
+        self.attn = CausalSelfAttention(n_embd, n_head, block_size, dropout)
         self.ffwd = FeedForward(n_embd, 4*n_embd, dropout)
-        self.ln1 = nn.LayerNorm(n_embd)
-        self.ln2 = nn.LayerNorm(n_embd)
+        self.ln_1 = nn.LayerNorm(n_embd)
+        self.ln_2 = nn.LayerNorm(n_embd)
 
     def forward(self, x):
-        x = x + self.sa(self.ln1(x))  # Residual connection around self-attention
-        x = x + self.ffwd(self.ln2(x)) # Residual connection around feed-forward
+        x = x + self.attn(self.ln_1(x))
+        x = x + self.ffwd(self.ln_2(x))
         return x
-    
-# 5. THE COMPLETE GPT MODEL 
+
+# 5. THE GPT MODEL
 class NanoStoryGPTModel(nn.Module):
     def __init__(self, vocab_size, n_embd, n_head, n_layer, block_size, dropout):
         super().__init__()
-        self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
-        self.position_embedding_table = nn.Embedding(block_size, n_embd)
-        self.blocks = nn.Sequential(*[Block(n_embd, n_head, block_size=block_size, dropout=dropout) for _ in range(n_layer)])
+        self.transformer = nn.ModuleDict(dict(
+            wte = nn.Embedding(vocab_size, n_embd),
+            wpe = nn.Embedding(block_size, n_embd),
+            drop = nn.Dropout(dropout),
+            h = nn.ModuleList([Block(n_embd, n_head, block_size, dropout) for _ in range(n_layer)]),
+            ln_f = nn.LayerNorm(n_embd),
+        ))
+        self.lm_head = nn.Linear(n_embd, vocab_size, bias=False)
         self.block_size = block_size
-        self.ln_f = nn.LayerNorm(n_embd) # Final layer norm
-        self.lm_head = nn.Linear(n_embd, vocab_size)
+
+        # Weight initialization
+        self.apply(self._init_weights)
+        print(f"Number of parameters: {sum(p.numel() for p in self.parameters())/1e6:.2f}M")
+
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
     def forward(self, idx, targets=None):
-        B, T = idx.shape
+        device = idx.device
+        b, t = idx.size()
+        pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0) # (1, t)
 
-        # Token and position embeddings
-        token_emb = self.token_embedding_table(idx)                                 # (B, T, n_embd)
-        pos_emb = self.position_embedding_table(torch.arange(T, device=idx.device)) # (T, n_embd)
-        x = token_emb + pos_emb                                                     # (B, T, n_embd)
+        # Forward the transformer
+        tok_emb = self.transformer.wte(idx) # (b, t, n_embd)
+        pos_emb = self.transformer.wpe(pos) # (1, t, n_embd)
+        x = self.transformer.drop(tok_emb + pos_emb)
+        for block in self.transformer.h:
+            x = block(x)
+        x = self.transformer.ln_f(x)
+        logits = self.lm_head(x)
 
-        x = self.blocks(x)       # (B, T, n_embd)
-        x = self.ln_f(x)         # (B, T, n_embd)
-        logits = self.lm_head(x) # (B, T, vocab_size)
-
-        if targets is None:
-            loss = None
-        else:
-            B, T, C = logits.shape
-            logits = logits.view(B*T, C)
-            targets = targets.view(B*T)
-            loss = F.cross_entropy(logits, targets)
+        loss = None
+        if targets is not None:
+            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))
 
         return logits, loss
 
+    @torch.no_grad()
     def generate(self, idx, max_new_tokens):
-        """ Generate new tokens from the model given a context """
         for _ in range(max_new_tokens):
-            idx_cond = idx[:, -self.block_size:] # Crop context to block size
+            idx_cond = idx if idx.size(1) <= self.block_size else idx[:, -self.block_size:]
             logits, _ = self(idx_cond)
-            logits = logits[:, -1, :] # Focus on last time step
-            probs = F.softmax(logits, dim=-1) # Convert to probabilities
-            next_id = torch.multinomial(probs, num_samples=1) # Sample
-            idx = torch.cat((idx, next_id), dim=1) # Append sampled token
+            logits = logits[:, -1, :]
+            probs = F.softmax(logits, dim=-1)
+            idx_next = torch.multinomial(probs, num_samples=1)
+            idx = torch.cat((idx, idx_next), dim=1)
         return idx
-    
-# 6. GPTDataset
+
+# 6. DATASET & TRAINING (Standard Logic maintained)
 class GPTDataset(Dataset):
     def __init__(self, bin_path, dtype, block_size):
         self.data = np.memmap(bin_path, dtype=dtype, mode='r')
@@ -153,7 +162,6 @@ class GPTDataset(Dataset):
     def __getitem__(self, idx):
         chunk = torch.from_numpy(self.data[idx : idx + self.block_size + 1].astype(np.int64))
         return chunk[:-1], chunk[1:]
-    
 # 7. Data Preparation
 
 def main():
@@ -171,7 +179,7 @@ def main():
 
     # 7.3. Init Model & Optimizer
     model = NanoStoryGPTModel(vocab_size, N_EMBD, N_HEAD, N_LAYER, BLOCK_SIZE, DROPOUT).to(device)
-    
+
     # 7.4 Load existing model if available to continue training
     if os.path.exists(model_path):
         print(f"Loading existing model from {model_path}...")
@@ -185,6 +193,7 @@ def main():
     best_loss = float('inf')
     model.train()
 
+    print(f"Training on {device}...")
     print(f"Training started. Max iterations: {MAX_ITERS}")
     finished = False
     while not finished:
@@ -211,8 +220,8 @@ def main():
             
             if iter_num % EVAL_INTERVAL == 0:
                 print(f"Step {iter_num} | Loss: {loss.item():.4f}")
-            
-            if loss < best_loss:
+
+            if iter_num > MIN_ITER_TO_SAVE and loss.item() < best_loss:
                 print(f"New best loss: {loss.item():.4f} (previous: {best_loss:.4f}). Saving model...")
                 best_loss = loss.item()
                 torch.save(model.state_dict(), model_path)
@@ -220,7 +229,7 @@ def main():
             iter_num += 1
 
     # Training complete
-    print("Training complete. Model saved.")
+    print("Training complete.")
 
 if __name__ == "__main__":
     main()
