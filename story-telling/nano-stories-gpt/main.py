@@ -219,8 +219,7 @@ def main():
             
             iter_num += 1
 
-    # 9. SAVE THE MODEL
-    torch.save(model.state_dict(), model_path)
+    # Training complete
     print("Training complete. Model saved.")
 
 if __name__ == "__main__":
