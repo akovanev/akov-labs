@@ -182,6 +182,7 @@ def main():
 
     # 8. TRAINING LOOP
     iter_num = 0
+    best_loss = float('inf')
     model.train()
 
     print(f"Training started. Max iterations: {MAX_ITERS}")
@@ -210,6 +211,10 @@ def main():
             
             if iter_num % EVAL_INTERVAL == 0:
                 print(f"Step {iter_num} | Loss: {loss.item():.4f}")
+            
+            if loss < best_loss:
+                print(f"New best loss: {loss.item():.4f} (previous: {best_loss:.4f}). Saving model...")
+                best_loss = loss.item()
                 torch.save(model.state_dict(), model_path)
             
             iter_num += 1
