@@ -36,7 +36,7 @@ class SimpleMLP(nn.Module):
         # We flatten, but we make d_model small so the PE signal is strong
         self.mlp = nn.Sequential(
             nn.Linear(seq_len * d_model, 256),
-            nn.ReLU(),
+            nn.GELU(),
             nn.Linear(256, vocab_size) # Predict the VALUE of the neighbor
         )
     
